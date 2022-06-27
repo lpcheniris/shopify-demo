@@ -36,13 +36,14 @@ export function ProductsCard() {
       url: "/api/newproducts",
       reactQueryOptions: {
         onSuccess: (respnse) => {
+          refetchProductCount()
           // setIsLoading(false);
         },
       },
     })
 
     const handleGetNewProducts = () => {
-      refetchNewProducts();
+      refetchNewProducts()
     }
 
   const toastMarkup = showToast && !isRefetchingCount && (
