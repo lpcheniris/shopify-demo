@@ -10,6 +10,11 @@ import verifyRequest from "./middleware/verify-request.js";
 import { setupGDPRWebHooks } from "./gdpr.js";
 import { BillingInterval } from "./helpers/ensure-billing.js";
 
+import {Product} from '@shopify/shopify-api/dist/rest-resources/2022-04/index.js';
+
+import Excel from "exceljs"
+import { assert } from "console";
+
 const USE_ONLINE_TOKENS = true;
 const TOP_LEVEL_OAUTH_COOKIE = "shopify_top_level_oauth";
 
@@ -125,8 +130,55 @@ export async function createServer(
     }
   });
 
+  async function readExcel(fileUrl) {
+    const jeweleryWorkBook = await new Excel.Workbook().xlsx.readFile(fileUrl);
+    const jeweleryWorkSheet = jeweleryWorkBook.getWorksheet(1)
+    const productMap = {}
+
+    jeweleryWorkSheet.eachRow(function(row, rowIndex){
+      if(rowIndex >1){  
+        const handle = row.getCell("A").value
+        if(!productMap[handle]) {
+          productMap[handle] = {}
+          productMap[handle].handle=row.getCell("A").value
+          productMap[handle].title=row.getCell("B").value
+          productMap[handle].body_html=row.getCell("C").value
+          productMap[handle].images = [{src:row.getCell("Y").value}]
+          productMap[handle].variants=[{option1:row.getCell("I").value, price:row.getCell("T").value}]
+          productMap[handle].options = [{name:row.getCell("H").value, values:[row.getCell("I").value] }]
+        } else {
+          if(row.getCell("Y").value) {
+            productMap[handle].images.push({src:row.getCell("Y").value})
+          }
+
+          if(row.getCell("I").value) {
+            productMap[handle].variants.push({option1:row.getCell("I").value,  price: row.getCell("T").value})
+            productMap[handle].options[0].values.push(row.getCell("I").value)
+          }
+        }
+      }
+     
+    })  
+    return productMap
+  }
+
   app.get("/api/newproducts", async(req, res) => {
+    const test_session = await Shopify.Utils.loadCurrentSession(req, res);
     try {
+
+      const productMap  = await readExcel(process.cwd() + "/assets/jewelery.xlsx") 
+      let count = 0
+      for(let productKey in productMap) {
+        console.log(JSON.stringify(productMap[productKey]))
+        const product = new Product({session: test_session })
+        product.handle = productMap[productKey].handle
+        product.title = productMap[productKey].title
+        product.body_html = productMap[productKey].body_html
+        product.images = productMap[productKey].images
+        product.options = productMap[productKey].options
+        product.variants = productMap[productKey].variants
+        await product.save({})
+      }
       res.status(200).send({data: 234});
     } catch (error) {
       res.status(500).send(error.message);

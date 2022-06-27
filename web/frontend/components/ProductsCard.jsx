@@ -21,7 +21,7 @@ export function ProductsCard() {
     url: "/api/products-count",
     reactQueryOptions: {
       onSuccess: () => {
-        setIsLoading(false);
+        // setIsLoading(false);
       },
     },
   });
@@ -30,11 +30,13 @@ export function ProductsCard() {
       data: newProducts,
       refetch: refetchNewProducts,
       isLoading: isLoadingProducts,
+      
      } = useAppQuery({
+      enabled:false,
       url: "/api/newproducts",
       reactQueryOptions: {
         onSuccess: (respnse) => {
-          setIsLoading(false);
+          // setIsLoading(false);
         },
       },
     })
